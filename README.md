@@ -174,7 +174,9 @@ Two things to keep in mind:
 
 ## AI Assistant
 
-The editor includes an optional AI Assistant for chat-based edits. It requires a `projectId` from your [Unlayer account](https://console.unlayer.com/) with the feature enabled:
+The editor includes an optional AI Assistant for chat-based edits. It requires a `projectId` from your [Unlayer account](https://console.unlayer.com/) with the feature enabled.
+
+<img width="1690" height="931" alt="react-image-editor-ai" src="https://github.com/user-attachments/assets/990effdb-5c8b-4b5d-abf4-804bfefaf273" />
 
 ```jsx
 <ImageEditor
