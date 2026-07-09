@@ -6,9 +6,10 @@
 
 The excellent [Unlayer Image Editor](https://unlayer.com/image-editor) as a React.js wrapper component — crop, resize, draw, text, shapes, stickers, frames, filters, and an optional AI assistant.
 
-|         |                                                                                                        |
-| ------- | ------------------------------------------------------------------------------------------------------ |
-| Sibling | [react-email-editor](https://github.com/unlayer/react-email-editor) — Unlayer's email editor for React |
+|           |                                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------------------ |
+| Live demo | [react-image-editor-example.vercel.app](https://react-image-editor-example.vercel.app/)                |
+| Sibling   | [react-email-editor](https://github.com/unlayer/react-email-editor) — Unlayer's email editor for React |
 
 ## Installation
 
@@ -190,7 +191,7 @@ Set `options.locale` (bundled: `en`, `es`, `fr`, `de`, `it`, `pt`, `nl`, `ja`, `
 
 ## Demo
 
-A Vite-based demo lives in [`demo/`](demo):
+Try the live demo at [react-image-editor-example.vercel.app](https://react-image-editor-example.vercel.app/), or run it locally — a Vite-based demo lives in [`demo/`](demo):
 
 ```sh
 cd demo
