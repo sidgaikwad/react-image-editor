@@ -178,11 +178,13 @@ The editor includes an optional AI Assistant for chat-based edits. It requires a
 
 <img width="1690" height="931" alt="react-image-editor-ai" src="https://github.com/user-attachments/assets/990effdb-5c8b-4b5d-abf4-804bfefaf273" />
 
+### Enable AI Assistant
+
 ```jsx
 <ImageEditor
   image={url}
   options={{
-    projectId: 1234,
+    projectId: 1234, // get from console
     features: { ai: { enabled: true, assistant: true } },
   }}
 />
