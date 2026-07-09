@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/unlayer/react-image-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/unlayer/react-image-editor/actions/workflows/ci.yml)
 
-The excellent [Unlayer Image Editor](https://unlayer.com) as a React.js wrapper component — crop, resize, draw, text, shapes, stickers, frames, filters, and an optional AI assistant.
+The excellent [Unlayer Image Editor](https://unlayer.com/image-editor) as a React.js wrapper component — crop, resize, draw, text, shapes, stickers, frames, filters, and an optional AI assistant.
 
 |         |                                                                                                        |
 | ------- | ------------------------------------------------------------------------------------------------------ |
@@ -172,7 +172,7 @@ Two things to keep in mind:
 
 ## AI Assistant
 
-The editor includes an optional AI Assistant for chat-based edits. It requires a `projectId` from your [Unlayer account](https://dashboard.unlayer.com) with the feature enabled:
+The editor includes an optional AI Assistant for chat-based edits. It requires a `projectId` from your [Unlayer account](https://console.unlayer.com/) with the feature enabled:
 
 ```jsx
 <ImageEditor
