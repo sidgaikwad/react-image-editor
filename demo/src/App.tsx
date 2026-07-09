@@ -6,11 +6,19 @@ import ImageEditor, {
 } from '@unlayer/react-image-editor';
 import type { UnlayerLocale } from '@unlayer/types';
 
+import Toolbar, { TOOL_NAMES, ToolName } from './Toolbar';
+
 const SAMPLE_IMAGES = [
   'https://picsum.photos/id/1015/1200/800',
   'https://picsum.photos/id/1025/1200/800',
   'https://picsum.photos/id/1040/1200/800',
 ];
+
+const allToolsEnabled = () =>
+  Object.fromEntries(TOOL_NAMES.map((tool) => [tool, true])) as Record<
+    ToolName,
+    boolean
+  >;
 
 export default function App() {
   const editorRef = useRef<ImageEditorRef>(null);
@@ -18,6 +26,8 @@ export default function App() {
   const [image, setImage] = useState(SAMPLE_IMAGES[0]);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [locale, setLocale] = useState<UnlayerLocale>('en');
+  const [tools, setTools] =
+    useState<Record<ToolName, boolean>>(allToolsEnabled);
   const [saved, setSaved] = useState<ImageEditorSaveResult | null>(null);
   const [status, setStatus] = useState('Loading editor…');
 
@@ -41,49 +51,35 @@ export default function App() {
     }
   };
 
+  const toggleTool = (tool: ToolName) => {
+    setTools((previous) => ({ ...previous, [tool]: !previous[tool] }));
+    setStatus(`Tool "${tool}" toggled (remount)`);
+  };
+
   return (
     <div className="app">
-      <header className="toolbar">
-        <h1>React Image Editor</h1>
-        <div className="controls">
-          <button onClick={nextImage}>Change image</button>
-          <button onClick={checkChanges}>Has changes?</button>
-          <button onClick={snapshot}>Snapshot</button>
-          <label>
-            Theme{' '}
-            <select
-              value={theme}
-              onChange={(event) =>
-                setTheme(event.target.value as 'light' | 'dark')
-              }
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </label>
-          <label>
-            Locale{' '}
-            <select
-              value={locale}
-              onChange={(event) =>
-                setLocale(event.target.value as UnlayerLocale)
-              }
-            >
-              <option value="en">English</option>
-              <option value="es">Español</option>
-              <option value="fr">Français</option>
-              <option value="de">Deutsch</option>
-            </select>
-          </label>
-          <span className="status">{status}</span>
-        </div>
-      </header>
+      <Toolbar
+        theme={theme}
+        onThemeChange={setTheme}
+        locale={locale}
+        onLocaleChange={setLocale}
+        tools={tools}
+        onToolToggle={toggleTool}
+        status={status}
+        onChangeImage={nextImage}
+        onCheckChanges={checkChanges}
+        onSnapshot={snapshot}
+      />
 
       <main className="editor">
         <ImageEditor
           ref={editorRef}
           image={image}
-          options={{ theme, locale }}
+          options={{
+            theme,
+            locale,
+            features: { imageEditor: { tools } },
+          }}
           onLoad={() => setStatus('Editor ready')}
           onSave={(result) => {
             setSaved(result);
