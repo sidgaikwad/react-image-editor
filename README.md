@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/unlayer/react-image-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/unlayer/react-image-editor/actions/workflows/ci.yml)
 
-The excellent [Unlayer Image Editor](https://unlayer.com/image-editor) as a React.js wrapper component — crop, resize, draw, text, shapes, stickers, frames, filters, and an optional AI assistant.
+The excellent [Unlayer Image Editor](https://unlayer.com/image-editor) as a React.js wrapper component — crop, resize, draw, text, shapes, stickers, frames, filters, and an optional AI Assistant.
 
 <img width="1536" height="1024" alt="react-image-editor-text" src="https://github.com/user-attachments/assets/99bea489-4b82-4e35-bb37-34d1e11e05d5" />
 
