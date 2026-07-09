@@ -6,6 +6,10 @@
 
 The excellent [Unlayer Image Editor](https://unlayer.com/image-editor) as a React.js wrapper component — crop, resize, draw, text, shapes, stickers, frames, filters, and an optional AI assistant.
 
+<img width="1536" height="1024" alt="react-image-editor" src="https://github.com/user-attachments/assets/f0da5883-a27a-43eb-93a1-4b5835c604ec" />
+
+## Live Demo
+
 Try the live demo: [react-image-editor-example.vercel.app](https://react-image-editor-example.vercel.app/)
 
 ## Installation
