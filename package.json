@@ -1,6 +1,6 @@
 {
   "name": "@unlayer/react-image-editor",
-  "version": "1.0.0-beta.0",
+  "version": "1.0.0",
   "description": "Unlayer's Image Editor Component for React.js",
   "type": "commonjs",
   "main": "./dist/index.js",
@@ -41,7 +41,7 @@
     "format": "prettier --write .",
     "prepare": "npm run build",
     "prepublishOnly": "npm run lint && npm run typecheck && npm test",
-    "release": "npm run build && npm publish --tag beta",
+    "release": "npm run build && npm publish",
     "netlify-build": "cd demo && npm install && npm run build"
   },
   "peerDependencies": {
