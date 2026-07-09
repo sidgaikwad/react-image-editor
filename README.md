@@ -92,6 +92,85 @@ Two distinct channels:
 - **`onLoadError`** — the editor loaded fine, but the _image_ couldn't be loaded into the canvas (CORS, dead URL, decode error).
 - **`onError`** — the wrapper couldn't reach a working editor: the embed script failed to load, editor creation was rejected, or re-applying a changed `image` failed. After a CDN failure the wrapper automatically resets its loader state, so a later remount retries from scratch.
 
+## Tools
+
+The editor ships eight tools, rendered as a tab rail beside the canvas:
+
+| Tool       | What it does                                                                                   |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| `crop`     | Crop with rotate (90° steps), flip, and a straighten slider.                                   |
+| `resize`   | Change the output dimensions.                                                                  |
+| `filter`   | One-tap presets plus adjustment sliders (brightness, contrast, saturation, hue, blur, noise…). |
+| `draw`     | Freehand brush with color, type, and size controls.                                            |
+| `text`     | Text layers with style presets, fonts, color/background/outline/shadow.                        |
+| `shapes`   | Filled/outline/gradient shape palettes with drag, resize, rotate, and styling.                 |
+| `stickers` | A bundled sticker library grouped by category, with color/outline/shadow for vector sets.      |
+| `frame`    | Frame presets with a size slider and color picker.                                             |
+
+All tools are enabled by default. Configure them through `options.features.imageEditor.tools` — each entry is either a `boolean` shorthand or `{ enabled?: boolean; icon?: string }`:
+
+```jsx
+// Hide the tools you don't want
+<ImageEditor
+  image={url}
+  options={{
+    features: {
+      imageEditor: {
+        tools: {
+          draw: false,
+          stickers: false,
+          frame: { enabled: false }, // object form, same effect
+        },
+      },
+    },
+  }}
+/>
+```
+
+```jsx
+// Allow-list style: a minimal crop-and-filter editor
+<ImageEditor
+  image={url}
+  options={{
+    features: {
+      imageEditor: {
+        tools: {
+          resize: false,
+          draw: false,
+          text: false,
+          shapes: false,
+          stickers: false,
+          frame: false,
+          // crop and filter stay enabled by default
+        },
+      },
+    },
+  }}
+/>
+```
+
+```jsx
+// Custom tool icon: a URL, raw <svg>…</svg> markup, or a Font Awesome name
+<ImageEditor
+  image={url}
+  options={{
+    features: {
+      imageEditor: {
+        tools: {
+          crop: { icon: 'fa-crop-simple' },
+          text: { icon: 'https://example.com/icons/text.svg' },
+        },
+      },
+    },
+  }}
+/>
+```
+
+Two things to keep in mind:
+
+- `features` is a remount-tier option (see the table above): changing the tools config destroys and recreates the editor, discarding unsaved edits — decide the toolset before mounting rather than toggling it live.
+- `features.imageEditor: false` disables the editing UI entirely; newer editor versions also support `features.imageEditor.dock: 'left' | 'right'` for the rail position and a `corners` entry (the rounded-corners control inside Crop) — these type-check once your `@unlayer/types` version includes them.
+
 ## AI Assistant
 
 The editor includes an optional AI assistant (chat-based edits, magic image). It requires a `projectId` from your [Unlayer account](https://dashboard.unlayer.com) with the feature enabled:
