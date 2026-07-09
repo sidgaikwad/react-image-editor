@@ -6,6 +6,8 @@
 
 The excellent [Unlayer Image Editor](https://unlayer.com/image-editor) as a React.js wrapper component — crop, resize, draw, text, shapes, stickers, frames, filters, and an optional AI assistant.
 
+**Completely free to use.** No account, API key, or `projectId` required — install the package and every editing tool works out of the box. Only the optional [AI Assistant](#ai-assistant) needs an Unlayer account.
+
 <img width="1536" height="1024" alt="react-image-editor" src="https://github.com/user-attachments/assets/f0da5883-a27a-43eb-93a1-4b5835c604ec" />
 
 ## Live Demo
@@ -33,7 +35,7 @@ const App = () => {
     <ImageEditor
       ref={editorRef}
       image="https://example.com/photo.jpg"
-      options={{ projectId: 1234, theme: 'light' }}
+      options={{ theme: 'light' }}
       onSave={({ dataUrl, blob }) => {
         // Persist the edited image
         console.info('Saved', dataUrl.length, 'bytes');
