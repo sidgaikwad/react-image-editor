@@ -373,6 +373,76 @@ it('resets again when the image reverts to a previously applied value', async ()
   expect(mockInstance.reset).toHaveBeenCalledTimes(2);
 });
 
+it('reports a reset rejection via onError without poisoning the chain', async () => {
+  const onError = vi.fn();
+  const { rerender } = render(<ImageEditor image="img-a" onError={onError} />);
+  await flush();
+
+  mockInstance.reset.mockRejectedValueOnce(new Error('reload failed'));
+  rerender(<ImageEditor image="img-b" onError={onError} />);
+  await flush();
+
+  expect(onError).toHaveBeenCalledWith(expect.any(Error));
+
+  // The chain still works: a later image change resets normally.
+  rerender(<ImageEditor image="img-c" onError={onError} />);
+  await flush();
+  expect(mockInstance.reset).toHaveBeenLastCalledWith('img-c');
+});
+
+it('waits for a pending reset before destroying on unmount', async () => {
+  const resetDeferred = defer<void>();
+  mockInstance.reset.mockImplementationOnce(() => resetDeferred.promise);
+
+  const { rerender, unmount } = render(<ImageEditor image="img-a" />);
+  await flush();
+
+  rerender(<ImageEditor image="img-b" />);
+  await flush();
+  expect(mockInstance.reset).toHaveBeenCalledTimes(1);
+
+  unmount();
+  await flush();
+  // Destroy is queued behind the pending reset.
+  expect(mockInstance.destroy).not.toHaveBeenCalled();
+
+  resetDeferred.resolve();
+  await flush();
+  expect(mockInstance.destroy).toHaveBeenCalledTimes(1);
+});
+
+it('remounts when scriptUrl changes', async () => {
+  const { rerender } = render(
+    <ImageEditor image="img-a" scriptUrl="https://a.example.com/embed.js" />
+  );
+  await flush();
+
+  rerender(
+    <ImageEditor image="img-a" scriptUrl="https://b.example.com/embed.js" />
+  );
+  await flush();
+
+  expect(mockInstance.destroy).toHaveBeenCalledTimes(1);
+  expect(createEditor).toHaveBeenCalledTimes(2);
+  expect(loadScript).toHaveBeenLastCalledWith('https://b.example.com/embed.js');
+});
+
+it('reverts theme to default when it is removed from options', async () => {
+  const { rerender } = render(
+    <ImageEditor image="img-a" options={{ theme: 'dark' }} />
+  );
+  await flush();
+
+  rerender(<ImageEditor image="img-a" options={{}} />);
+  await flush();
+
+  expect(mockInstance.updateOptions).toHaveBeenCalledTimes(1);
+  const applied = mockInstance.updateOptions.mock.calls[0][0];
+  expect('theme' in applied).toBe(true);
+  expect(applied.theme).toBeUndefined();
+  expect(createEditor).toHaveBeenCalledTimes(1);
+});
+
 it('hard-resets the loader only when the bundle never evaluated', async () => {
   // Bundle-load failure: impl global absent -> reset the loader.
   createEditor.mockRejectedValueOnce(new Error('bundle 404'));

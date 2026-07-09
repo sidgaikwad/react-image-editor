@@ -46,19 +46,19 @@ The component works out of the box in React Server Components environments (e.g.
 
 ## Props
 
-| Prop          | Type                          | Description                                                                                                                                                                            |
-| ------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `image`       | `string` (required)           | Image URL or base64 data URL to edit.                                                                                                                                                  |
-| `options`     | `ImageEditorOptions`          | Editor configuration: `projectId`, `user`, `features`, `theme`, `locale`, `translations`, `env`, `offline`, `licenseUrl`, `defaultPrompt`, `autoSubmitPrompt`, `aiAssistantOpenState`. |
-| `editorId`    | `string`                      | id for the container div. Cosmetic — the editor mounts by element reference.                                                                                                           |
-| `minHeight`   | `number \| string`            | Minimum height of the editor container. Defaults to `500`.                                                                                                                             |
-| `style`       | `CSSProperties`               | Styles applied to the container div.                                                                                                                                                   |
-| `scriptUrl`   | `string`                      | Override the embed script URL. Defaults to `https://cdn.unlayer.com/image-editor/embed.js`.                                                                                            |
-| `onLoad`      | `(editor) => void`            | Called with the editor instance once it is mounted.                                                                                                                                    |
-| `onSave`      | `({ dataUrl, blob }) => void` | Called when the user saves the edited image.                                                                                                                                           |
-| `onCancel`    | `() => void`                  | Called when the user cancels editing.                                                                                                                                                  |
-| `onLoadError` | `() => void`                  | Called when the image fails to load into the canvas (CORS, 404, decode error).                                                                                                         |
-| `onError`     | `(error: Error) => void`      | Wrapper-level failures: embed script load, editor creation, or image reset. Falls back to `console.error` when absent.                                                                 |
+| Prop          | Type                          | Description                                                                                                                                                                                                    |
+| ------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `image`       | `string` (required)           | Image URL or base64 data URL to edit.                                                                                                                                                                          |
+| `options`     | `ImageEditorOptions`          | Editor configuration: `projectId`, `user`, `features`, `theme`, `locale`, `translations`, `env`, `offline`, `licenseUrl`, `defaultPrompt`, `autoSubmitPrompt`, `aiAssistantOpenState`.                         |
+| `editorId`    | `string`                      | id for the container div. Cosmetic — the editor mounts by element reference.                                                                                                                                   |
+| `minHeight`   | `number \| string`            | Minimum height of the editor container. Defaults to `500`.                                                                                                                                                     |
+| `style`       | `CSSProperties`               | Styles applied to the container div.                                                                                                                                                                           |
+| `scriptUrl`   | `string`                      | Override the embed script URL. Defaults to `https://cdn.unlayer.com/image-editor/embed.js`. One embed per page — the first loader to run wins globally, so don't mix different `scriptUrl`s across components. |
+| `onLoad`      | `(editor) => void`            | Called with the editor instance once it is mounted.                                                                                                                                                            |
+| `onSave`      | `({ dataUrl, blob }) => void` | Called when the user saves the edited image.                                                                                                                                                                   |
+| `onCancel`    | `() => void`                  | Called when the user cancels editing.                                                                                                                                                                          |
+| `onLoadError` | `() => void`                  | Called when the image fails to load into the canvas (CORS, 404, decode error).                                                                                                                                 |
+| `onError`     | `(error: Error) => void`      | Wrapper-level failures: embed script load, editor creation, or image reset. Falls back to `console.error` when absent.                                                                                         |
 
 ## Editor instance (ref)
 

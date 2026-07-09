@@ -155,9 +155,16 @@ function ImageEditorInner(
 
   useEffect(() => {
     if (!editor) return;
+    // Skip instances already queued for destroy by a remount in the same
+    // commit — the replacement mount re-records the applied values itself.
+    if (editorRef.current !== editor) return;
     if (appliedUpdatableRef.current === updatableKey) return;
     appliedUpdatableRef.current = updatableKey;
-    editor.updateOptions({ theme, locale, translations });
+    try {
+      editor.updateOptions({ theme, locale, translations });
+    } catch (error) {
+      fail(error);
+    }
   }, [editor, updatableKey]);
 
   return (

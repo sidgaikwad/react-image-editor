@@ -103,7 +103,11 @@ export interface ImageEditorProps {
   minHeight?: number | string;
   /** Styles applied to the container div. */
   style?: CSSProperties;
-  /** Override the embed script URL (e.g. to pin an environment). */
+  /**
+   * Override the embed script URL (e.g. to pin an environment). One embed
+   * per page: the first loader to run installs window.ImageEditor and wins
+   * globally, so do not mix different scriptUrls across components.
+   */
   scriptUrl?: string;
   /** Called with the editor instance once it is mounted. */
   onLoad?(editor: ImageEditorInstance): void;
