@@ -6,7 +6,7 @@ import ImageEditor, {
 } from '@unlayer/react-image-editor';
 import type { UnlayerLocale } from '@unlayer/types';
 
-import Toolbar, { TOOL_NAMES, ToolName } from './Toolbar';
+import Sidebar, { TOOL_NAMES, ToolName } from './Sidebar';
 
 const SAMPLE_IMAGES = [
   'https://picsum.photos/id/1015/1200/800',
@@ -28,6 +28,7 @@ export default function App() {
   const [locale, setLocale] = useState<UnlayerLocale>('en');
   const [tools, setTools] =
     useState<Record<ToolName, boolean>>(allToolsEnabled);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [saved, setSaved] = useState<ImageEditorSaveResult | null>(null);
   const [status, setStatus] = useState('Loading editor…');
 
@@ -58,38 +59,54 @@ export default function App() {
 
   return (
     <div className="app">
-      <Toolbar
-        theme={theme}
-        onThemeChange={setTheme}
-        locale={locale}
-        onLocaleChange={setLocale}
-        tools={tools}
-        onToolToggle={toggleTool}
-        status={status}
-        onChangeImage={nextImage}
-        onCheckChanges={checkChanges}
-        onSnapshot={snapshot}
-      />
+      <header className="topbar">
+        <button
+          className="sidebar-toggle"
+          aria-label="Toggle controls"
+          title="Toggle controls"
+          onClick={() => setSidebarOpen((open) => !open)}
+        >
+          ☰
+        </button>
+        <h1>React Image Editor</h1>
+        <span className="status">{status}</span>
+      </header>
 
-      <main className="editor">
-        <ImageEditor
-          ref={editorRef}
-          image={image}
-          options={{
-            theme,
-            locale,
-            features: { imageEditor: { tools } },
-          }}
-          onLoad={() => setStatus('Editor ready')}
-          onSave={(result) => {
-            setSaved(result);
-            setStatus('Saved!');
-          }}
-          onCancel={() => setStatus('Cancelled')}
-          onLoadError={() => setStatus('Image failed to load')}
-          onError={(error) => setStatus(`Error: ${error.message}`)}
-        />
-      </main>
+      <div className="body">
+        {sidebarOpen && (
+          <Sidebar
+            theme={theme}
+            onThemeChange={setTheme}
+            locale={locale}
+            onLocaleChange={setLocale}
+            tools={tools}
+            onToolToggle={toggleTool}
+            onChangeImage={nextImage}
+            onCheckChanges={checkChanges}
+            onSnapshot={snapshot}
+          />
+        )}
+
+        <main className="editor">
+          <ImageEditor
+            ref={editorRef}
+            image={image}
+            options={{
+              theme,
+              locale,
+              features: { imageEditor: { tools } },
+            }}
+            onLoad={() => setStatus('Editor ready')}
+            onSave={(result) => {
+              setSaved(result);
+              setStatus('Saved!');
+            }}
+            onCancel={() => setStatus('Cancelled')}
+            onLoadError={() => setStatus('Image failed to load')}
+            onError={(error) => setStatus(`Error: ${error.message}`)}
+          />
+        </main>
+      </div>
 
       {saved && (
         <aside className="preview">
