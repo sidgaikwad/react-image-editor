@@ -92,6 +92,93 @@ it('creates the editor with the container element, image, and options', async ()
   expect(options.theme).toBe('dark');
 });
 
+it('passes every documented option through to createEditor unchanged', async () => {
+  // One entry for each key documented in the README's options table,
+  // including a tools enable/disable/icon config. The wrapper's contract
+  // is verbatim pass-through; the show/hide behavior itself belongs to
+  // the underlying editor.
+  const options = {
+    projectId: 1234,
+    user: { id: 'u1', name: 'Adeel', email: 'adeel@example.com' },
+    features: {
+      imageEditor: {
+        enabled: true,
+        tools: {
+          draw: false,
+          stickers: { enabled: false },
+          crop: { icon: 'fa-crop-simple' },
+          text: { icon: 'https://example.com/icons/text.svg' },
+        },
+      },
+      ai: { enabled: true, assistant: true },
+    },
+    env: { API_V2_BASE_URL: 'https://api.example.com' },
+    theme: 'dark' as const,
+    locale: 'es' as const,
+    translations: { es: { 'editor.save': 'Guardar' } },
+    offline: false,
+    licenseUrl: 'https://example.com/license.json',
+    defaultPrompt: 'Remove the background',
+    autoSubmitPrompt: false,
+    aiAssistantOpenState: 'closed' as const,
+  };
+
+  render(<ImageEditor image="img-a" options={options} />);
+  await flush();
+
+  const received = mountOptionsOf();
+  const { container, image, onSave, onCancel, onLoadError, ...passedThrough } =
+    received;
+  expect(passedThrough).toEqual(options);
+  // Nested configs arrive by reference, not a lossy copy.
+  expect(received.features).toBe(options.features);
+});
+
+it('remounts when the tools config changes', async () => {
+  const toolsOf = (draw: boolean) => ({
+    imageEditor: { tools: { draw } },
+  });
+
+  const { rerender } = render(
+    <ImageEditor image="img-a" options={{ features: toolsOf(true) }} />
+  );
+  await flush();
+
+  rerender(
+    <ImageEditor image="img-a" options={{ features: toolsOf(false) }} />
+  );
+  await flush();
+
+  // README documents features as remount-tier: destroy + recreate.
+  expect(mockInstance.destroy).toHaveBeenCalledTimes(1);
+  expect(createEditor).toHaveBeenCalledTimes(2);
+  expect(mountOptionsOf(1).features?.imageEditor).toEqual({
+    tools: { draw: false },
+  });
+});
+
+it('does not remount when the tools config is deep-equal but not reference-equal', async () => {
+  const { rerender } = render(
+    <ImageEditor
+      image="img-a"
+      options={{ features: { imageEditor: { tools: { draw: false } } } }}
+    />
+  );
+  await flush();
+
+  // A fresh-but-identical object literal (the common inline-props case).
+  rerender(
+    <ImageEditor
+      image="img-a"
+      options={{ features: { imageEditor: { tools: { draw: false } } } }}
+    />
+  );
+  await flush();
+
+  expect(mockInstance.destroy).not.toHaveBeenCalled();
+  expect(createEditor).toHaveBeenCalledTimes(1);
+});
+
 it('exposes the editor instance through the ref and calls onLoad', async () => {
   const ref = React.createRef<ImageEditorRef>();
   const onLoad = vi.fn();
