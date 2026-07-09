@@ -93,6 +93,54 @@ it('reuses a host-injected tag instead of injecting a duplicate', async () => {
   await promise;
 });
 
+it('does not reuse a tag whose URL merely contains the script URL', async () => {
+  // e.g. a proxied copy: reusing it would attach listeners to a script
+  // that is not our embed and may never fire.
+  const proxied = document.createElement('script');
+  proxied.src =
+    'https://proxy.example.com/fetch?url=https://cdn.unlayer.com/image-editor/embed.js';
+  document.head.appendChild(proxied);
+
+  loadScript();
+
+  const tags = scriptTags();
+  expect(tags).toHaveLength(2);
+  expect(tags[1].src).toBe('https://cdn.unlayer.com/image-editor/embed.js');
+});
+
+it('times out on a reused tag that never fires (already-errored host tag)', async () => {
+  vi.useFakeTimers();
+  try {
+    // Simulates a host-injected tag that fired `error` before we attached
+    // listeners — it will never fire again.
+    const deadTag = document.createElement('script');
+    deadTag.src = 'https://cdn.unlayer.com/image-editor/embed.js';
+    document.head.appendChild(deadTag);
+
+    const promise = loadScript();
+    const rejection = expect(promise).rejects.toThrow(/Timed out/);
+    vi.advanceTimersByTime(30_000);
+    await rejection;
+
+    // The dead tag was removed and the cache evicted: a retry injects fresh.
+    expect(scriptTags()).toHaveLength(0);
+    loadScript();
+    expect(scriptTags()).toHaveLength(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('resetLoader rejects a still-pending load so waiters fail fast', async () => {
+  const pending = loadScript();
+  expect(scriptTags()).toHaveLength(1);
+
+  resetLoader();
+
+  await expect(pending).rejects.toThrow(/loader was reset/);
+  expect(scriptTags()).toHaveLength(0);
+});
+
 it('rejects on script error, removes the dead tag, and retries fresh', async () => {
   const promise = loadScript();
   const failed = scriptTags()[0];
