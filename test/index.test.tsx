@@ -477,6 +477,35 @@ it('reports a reset rejection via onError without poisoning the chain', async ()
   expect(mockInstance.reset).toHaveBeenLastCalledWith('img-c');
 });
 
+it('contains a throwing onError without poisoning the chain', async () => {
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const onError = vi.fn(() => {
+    throw new Error('boom');
+  });
+  const { rerender } = render(<ImageEditor image="img-a" onError={onError} />);
+  await flush();
+
+  // fail() runs as the terminal .catch of the chain; a throwing onError
+  // must be swallowed rather than rejecting chainRef.
+  mockInstance.reset.mockRejectedValueOnce(new Error('reload failed'));
+  rerender(<ImageEditor image="img-b" onError={onError} />);
+  await flush();
+
+  expect(onError).toHaveBeenCalledWith(expect.any(Error));
+  // The callback's own throw is reported, not propagated.
+  expect(consoleError).toHaveBeenCalledWith(
+    '[react-image-editor] onError callback threw',
+    expect.any(Error)
+  );
+
+  // The chain survived: a later image change still resets normally.
+  rerender(<ImageEditor image="img-c" onError={onError} />);
+  await flush();
+  expect(mockInstance.reset).toHaveBeenLastCalledWith('img-c');
+
+  consoleError.mockRestore();
+});
+
 it('waits for a pending reset before destroying on unmount', async () => {
   const resetDeferred = defer<void>();
   mockInstance.reset.mockImplementationOnce(() => resetDeferred.promise);

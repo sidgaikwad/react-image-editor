@@ -47,7 +47,17 @@ function ImageEditorInner(
     const err = error instanceof Error ? error : new Error(String(error));
     const { onError } = latestPropsRef.current;
     if (onError) {
-      onError(err);
+      // A throwing onError must never escape: fail() runs as the terminal
+      // .catch of the serialized chain, so a throw here would reject
+      // chainRef and poison every subsequent link (see the invariant above).
+      try {
+        onError(err);
+      } catch (callbackError) {
+        console.error(
+          '[react-image-editor] onError callback threw',
+          callbackError
+        );
+      }
     } else {
       console.error('[react-image-editor]', err);
     }
