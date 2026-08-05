@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 
 import type { UnlayerLocale } from '@unlayer/types';
 
@@ -31,16 +31,35 @@ interface SidebarProps {
   tools: Record<ToolName, boolean>;
   onToolToggle(tool: ToolName): void;
   onChangeImage(): void;
+  onUploadImage(file: File): void;
   onCheckChanges(): void;
   onSnapshot(): void;
 }
 
 export default function Sidebar(props: SidebarProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <aside className="sidebar">
       <section className="section">
         <h2 className="section-label">Actions</h2>
         <button onClick={props.onChangeImage}>Change image</button>
+        <button onClick={() => fileInputRef.current?.click()}>
+          Upload image…
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            // Clear before the callback so re-selecting the same file always
+            // fires onChange, even if the handler throws.
+            event.target.value = '';
+            if (file) props.onUploadImage(file);
+          }}
+        />
         <button onClick={props.onCheckChanges}>Has changes?</button>
         <button onClick={props.onSnapshot}>Snapshot</button>
       </section>

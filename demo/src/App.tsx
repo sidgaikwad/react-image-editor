@@ -14,6 +14,8 @@ const SAMPLE_IMAGES = [
   'https://picsum.photos/id/1040/1200/800',
 ];
 
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
 const allToolsEnabled = () =>
   Object.fromEntries(TOOL_NAMES.map((tool) => [tool, true])) as Record<
     ToolName,
@@ -32,10 +34,44 @@ export default function App() {
   const [saved, setSaved] = useState<ImageEditorSaveResult | null>(null);
   const [status, setStatus] = useState('Loading editor…');
 
+  // Invalidates in-flight file reads so a slow read can never overwrite a
+  // newer image choice (upload or sample) after the fact.
+  const readTokenRef = useRef(0);
+  const readerRef = useRef<FileReader | null>(null);
+
   const nextImage = () => {
+    readTokenRef.current++;
+    readerRef.current?.abort();
     const index = SAMPLE_IMAGES.indexOf(image);
     setImage(SAMPLE_IMAGES[(index + 1) % SAMPLE_IMAGES.length]);
     setStatus('Image changed (reset)');
+  };
+
+  const uploadImage = (file: File) => {
+    // accept="image/*" is only a picker hint — enforce type and size here.
+    if (!file.type.startsWith('image/')) {
+      setStatus(`"${file.name}" is not an image`);
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setStatus(`"${file.name}" is too large (max 20 MB)`);
+      return;
+    }
+    readerRef.current?.abort();
+    const token = ++readTokenRef.current;
+    const reader = new FileReader();
+    readerRef.current = reader;
+    reader.onload = () => {
+      if (token !== readTokenRef.current) return;
+      setImage(reader.result as string);
+      setStatus(`Loaded "${file.name}" (reset)`);
+    };
+    reader.onerror = () => {
+      if (token !== readTokenRef.current) return;
+      console.error('[demo] file read failed', reader.error);
+      setStatus(`Could not read "${file.name}"`);
+    };
+    reader.readAsDataURL(file);
   };
 
   const checkChanges = () => {
@@ -82,6 +118,7 @@ export default function App() {
             tools={tools}
             onToolToggle={toggleTool}
             onChangeImage={nextImage}
+            onUploadImage={uploadImage}
             onCheckChanges={checkChanges}
             onSnapshot={snapshot}
           />
