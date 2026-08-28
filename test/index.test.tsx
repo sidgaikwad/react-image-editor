@@ -506,6 +506,36 @@ it('contains a throwing onError without poisoning the chain', async () => {
   consoleError.mockRestore();
 });
 
+it('contains a throwing onLoad without reporting a wrapper failure', async () => {
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const onError = vi.fn();
+  const onLoad = vi.fn(() => {
+    throw new Error('boom');
+  });
+
+  const { rerender } = render(
+    <ImageEditor image="img-a" onLoad={onLoad} onError={onError} />
+  );
+  await flush();
+
+  // The callback's own throw is reported, not propagated.
+  expect(consoleError).toHaveBeenCalledWith(
+    '[react-image-editor] onLoad callback threw',
+    expect.any(Error)
+  );
+  // The editor mounted, so the consumer must not see a wrapper failure and
+  // the shared loader must survive.
+  expect(onError).not.toHaveBeenCalled();
+  expect(resetLoader).not.toHaveBeenCalled();
+
+  // The instance is still live: a later image change resets normally.
+  rerender(<ImageEditor image="img-b" onLoad={onLoad} onError={onError} />);
+  await flush();
+  expect(mockInstance.reset).toHaveBeenLastCalledWith('img-b');
+
+  consoleError.mockRestore();
+});
+
 it('waits for a pending reset before destroying on unmount', async () => {
   const resetDeferred = defer<void>();
   mockInstance.reset.mockImplementationOnce(() => resetDeferred.promise);
