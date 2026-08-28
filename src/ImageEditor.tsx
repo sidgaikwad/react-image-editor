@@ -117,7 +117,17 @@ function ImageEditorInner(
           mountOptions.translations,
         ]);
         setEditor(created);
-        latestPropsRef.current.onLoad?.(created);
+        // The editor mounted successfully, so a throw from the consumer's
+        // callback must not reach the terminal .catch below, where it would
+        // surface as a wrapper failure and could hard-reset the loader.
+        try {
+          latestPropsRef.current.onLoad?.(created);
+        } catch (callbackError) {
+          console.error(
+            '[react-image-editor] onLoad callback threw',
+            callbackError
+          );
+        }
       })
       .catch((error) => {
         // If the versioned bundle never evaluated, the CDN loader has
