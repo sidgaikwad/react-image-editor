@@ -15,6 +15,21 @@ vi.mock('../src/loadScript', () => ({
   resetLoader: vi.fn(),
 }));
 
+const capturedRefs: React.RefObject<unknown>[] = [];
+let captureRefs = false;
+
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>();
+  const useRef = ((initial?: unknown) => {
+    const ref = actual.useRef(initial);
+    if (captureRefs) {
+      capturedRefs.push(ref);
+    }
+    return ref;
+  }) as typeof actual.useRef;
+  return { ...actual, useRef, default: { ...actual, useRef } };
+});
+
 interface Deferred<T> {
   promise: Promise<T>;
   resolve: (value: T) => void;
@@ -200,6 +215,43 @@ it('destroys the editor on unmount', async () => {
   expect(mockInstance.destroy).toHaveBeenCalledTimes(1);
 });
 
+it('skips createEditor when unmounted while the embed script loads', async () => {
+  const deferred = defer<void>();
+  vi.mocked(loadScript).mockImplementationOnce(() => deferred.promise);
+
+  const { unmount } = render(<ImageEditor image="img-a" />);
+  await flush();
+  unmount();
+  deferred.resolve();
+  await flush();
+
+  expect(createEditor).not.toHaveBeenCalled();
+});
+
+it('skips createEditor when the container ref is gone after the script loads', async () => {
+  const deferred = defer<void>();
+  vi.mocked(loadScript).mockImplementationOnce(() => deferred.promise);
+
+  captureRefs = true;
+  capturedRefs.length = 0;
+  try {
+    render(<ImageEditor image="img-a" />);
+    await flush();
+    const containerRef = capturedRefs.find(
+      (ref) => ref.current instanceof HTMLElement
+    );
+    expect(containerRef).toBeDefined();
+    containerRef!.current = null;
+    deferred.resolve();
+    await flush();
+
+    expect(createEditor).not.toHaveBeenCalled();
+  } finally {
+    captureRefs = false;
+    capturedRefs.length = 0;
+  }
+});
+
 it('destroys an editor that resolves after unmount', async () => {
   const deferred = defer<ImageEditorInstance>();
   createEditor.mockImplementationOnce(() => deferred.promise);
@@ -253,6 +305,36 @@ it('applies a theme change via updateOptions without remounting', async () => {
     expect.objectContaining({ theme: 'dark' })
   );
   expect(createEditor).toHaveBeenCalledTimes(1);
+});
+
+it('reports an updateOptions throw via onError without poisoning the chain', async () => {
+  const onError = vi.fn();
+  mockInstance.updateOptions.mockImplementation(() => {
+    throw new Error('theme apply failed');
+  });
+
+  const { rerender } = render(
+    <ImageEditor image="img-a" onError={onError} options={{ theme: 'light' }} />
+  );
+  await flush();
+
+  rerender(
+    <ImageEditor image="img-a" onError={onError} options={{ theme: 'dark' }} />
+  );
+  await flush();
+
+  expect(onError).toHaveBeenCalledWith(expect.any(Error));
+  expect((onError.mock.calls[0][0] as Error).message).toBe(
+    'theme apply failed'
+  );
+  expect(createEditor).toHaveBeenCalledTimes(1);
+
+  mockInstance.updateOptions.mockReset();
+  rerender(
+    <ImageEditor image="img-b" onError={onError} options={{ theme: 'dark' }} />
+  );
+  await flush();
+  expect(mockInstance.reset).toHaveBeenLastCalledWith('img-b');
 });
 
 it('remounts the editor when a non-updatable option changes', async () => {
@@ -414,6 +496,49 @@ it('falls back to console.error when onError is not provided', async () => {
 
   expect(consoleError).toHaveBeenCalled();
   consoleError.mockRestore();
+});
+
+it('skips a reset that collapses back to the applied image', async () => {
+  const { rerender } = render(<ImageEditor image="img-a" />);
+  await flush();
+
+  rerender(<ImageEditor image="img-b" />);
+  rerender(<ImageEditor image="img-a" />);
+  await flush();
+
+  expect(mockInstance.reset).not.toHaveBeenCalled();
+});
+
+it('skips a queued reset and updateOptions when a remount replaces the instance', async () => {
+  const { rerender } = render(
+    <ImageEditor image="img-a" options={{ projectId: 1, theme: 'light' }} />
+  );
+  await flush();
+
+  rerender(
+    <ImageEditor image="img-b" options={{ projectId: 2, theme: 'dark' }} />
+  );
+  await flush();
+
+  expect(mockInstance.reset).not.toHaveBeenCalled();
+  expect(createEditor).toHaveBeenCalledTimes(2);
+  expect(mountOptionsOf(1).image).toBe('img-b');
+});
+
+it('skips a queued reset when the instance is replaced before it runs', async () => {
+  const { rerender } = render(
+    <ImageEditor image="img-a" options={{ projectId: 1 }} />
+  );
+  await flush();
+
+  // Queue a reset, then remount in the same turn so the reset link sees a
+  // replaced editorRef and returns without calling reset.
+  rerender(<ImageEditor image="img-b" options={{ projectId: 1 }} />);
+  rerender(<ImageEditor image="img-b" options={{ projectId: 2 }} />);
+  await flush();
+
+  expect(mockInstance.reset).not.toHaveBeenCalled();
+  expect(createEditor).toHaveBeenCalledTimes(2);
 });
 
 it('serializes overlapping image changes and collapses to the final value', async () => {
