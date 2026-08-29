@@ -1,6 +1,6 @@
 {
   "name": "@unlayer/react-image-editor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Unlayer's Image Editor Component for React.js",
   "type": "commonjs",
   "main": "./dist/index.js",
