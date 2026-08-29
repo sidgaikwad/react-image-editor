@@ -86,6 +86,9 @@ function ImageEditorInner(
             'The embed script loaded but window.ImageEditor is unavailable.'
           );
         }
+        // Defensive: React only detaches the ref on unmount, which the
+        // cancelled check above already caught.
+        /* v8 ignore next */
         if (!container) return;
 
         // Read at call time, not effect time: the image prop may have

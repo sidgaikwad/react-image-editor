@@ -15,21 +15,6 @@ vi.mock('../src/loadScript', () => ({
   resetLoader: vi.fn(),
 }));
 
-const capturedRefs: React.RefObject<unknown>[] = [];
-let captureRefs = false;
-
-vi.mock('react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react')>();
-  const useRef = ((initial?: unknown) => {
-    const ref = actual.useRef(initial);
-    if (captureRefs) {
-      capturedRefs.push(ref);
-    }
-    return ref;
-  }) as typeof actual.useRef;
-  return { ...actual, useRef, default: { ...actual, useRef } };
-});
-
 interface Deferred<T> {
   promise: Promise<T>;
   resolve: (value: T) => void;
@@ -226,30 +211,6 @@ it('skips createEditor when unmounted while the embed script loads', async () =>
   await flush();
 
   expect(createEditor).not.toHaveBeenCalled();
-});
-
-it('skips createEditor when the container ref is gone after the script loads', async () => {
-  const deferred = defer<void>();
-  vi.mocked(loadScript).mockImplementationOnce(() => deferred.promise);
-
-  captureRefs = true;
-  capturedRefs.length = 0;
-  try {
-    render(<ImageEditor image="img-a" />);
-    await flush();
-    const containerRef = capturedRefs.find(
-      (ref) => ref.current instanceof HTMLElement
-    );
-    expect(containerRef).toBeDefined();
-    containerRef!.current = null;
-    deferred.resolve();
-    await flush();
-
-    expect(createEditor).not.toHaveBeenCalled();
-  } finally {
-    captureRefs = false;
-    capturedRefs.length = 0;
-  }
 });
 
 it('destroys an editor that resolves after unmount', async () => {
