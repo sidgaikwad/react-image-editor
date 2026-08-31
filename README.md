@@ -117,7 +117,9 @@ All tools are enabled by default. Configure them through `options.features.image
   options={{
     features: {
       imageEditor: {
+        dock: 'left',
         tools: {
+          corners: false,
           draw: false,
           stickers: false,
           frame: { enabled: false }, // object form, same effect
@@ -170,7 +172,7 @@ All tools are enabled by default. Configure them through `options.features.image
 Two things to keep in mind:
 
 - `features` is a remount-tier option (see the table above): changing the tools config destroys and recreates the editor, discarding unsaved edits — decide the toolset before mounting rather than toggling it live.
-- `features.imageEditor: false` disables the editing UI entirely; newer editor versions also support `features.imageEditor.dock: 'left' | 'right'` for the rail position and a `corners` entry (the rounded-corners control inside Crop) — these type-check once your `@unlayer/types` version includes them.
+- `features.imageEditor: false` disables the editing UI entirely. Use `features.imageEditor.dock: 'left' | 'right'` to position the tool rail; the rounded-corners control inside Crop is configured through `features.imageEditor.tools.corners`.
 
 ## AI Assistant
 
