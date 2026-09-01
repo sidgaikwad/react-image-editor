@@ -34,13 +34,25 @@ const defer = <T,>(): Deferred<T> => {
 // Flush the component's serialized promise chain.
 const flush = () => act(async () => {});
 
-let mockInstance: {
+interface MockInstance {
   destroy: ReturnType<typeof vi.fn>;
   getImage: ReturnType<typeof vi.fn>;
   hasChanges: ReturnType<typeof vi.fn>;
   updateOptions: ReturnType<typeof vi.fn>;
   reset: ReturnType<typeof vi.fn>;
-};
+}
+
+// Distinct instances let a test tell "the replaced editor was skipped"
+// apart from "no editor was touched at all".
+const makeInstance = (): MockInstance => ({
+  destroy: vi.fn(),
+  getImage: vi.fn(() => null),
+  hasChanges: vi.fn(() => false),
+  updateOptions: vi.fn(),
+  reset: vi.fn(async () => {}),
+});
+
+let mockInstance: MockInstance;
 let createEditor: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -48,13 +60,7 @@ beforeEach(() => {
   vi.mocked(loadScript).mockImplementation(() => Promise.resolve());
   vi.mocked(resetLoader).mockClear();
 
-  mockInstance = {
-    destroy: vi.fn(),
-    getImage: vi.fn(() => null),
-    hasChanges: vi.fn(() => false),
-    updateOptions: vi.fn(),
-    reset: vi.fn(async () => {}),
-  };
+  mockInstance = makeInstance();
   createEditor = vi.fn(async () => mockInstance);
   window.ImageEditor = {
     createEditor,
@@ -471,35 +477,35 @@ it('skips a reset that collapses back to the applied image', async () => {
 });
 
 it('skips a queued reset and updateOptions when a remount replaces the instance', async () => {
+  const oldInstance = makeInstance();
+  const newInstance = makeInstance();
+  createEditor
+    .mockImplementationOnce(async () => oldInstance)
+    .mockImplementationOnce(async () => newInstance);
+
   const { rerender } = render(
     <ImageEditor image="img-a" options={{ projectId: 1, theme: 'light' }} />
   );
   await flush();
 
+  // image, theme and a remount-tier option all change in one commit: the
+  // effects still see the outgoing editor, so both guards must fire.
   rerender(
     <ImageEditor image="img-b" options={{ projectId: 2, theme: 'dark' }} />
   );
   await flush();
 
-  expect(mockInstance.reset).not.toHaveBeenCalled();
+  expect(oldInstance.reset).not.toHaveBeenCalled();
+  expect(oldInstance.updateOptions).not.toHaveBeenCalled();
+  expect(oldInstance.destroy).toHaveBeenCalledTimes(1);
+
+  // The replacement mount carries the new image and theme itself, so it has
+  // nothing left to re-apply.
   expect(createEditor).toHaveBeenCalledTimes(2);
   expect(mountOptionsOf(1).image).toBe('img-b');
-});
-
-it('skips a queued reset when the instance is replaced before it runs', async () => {
-  const { rerender } = render(
-    <ImageEditor image="img-a" options={{ projectId: 1 }} />
-  );
-  await flush();
-
-  // Queue a reset, then remount in the same turn so the reset link sees a
-  // replaced editorRef and returns without calling reset.
-  rerender(<ImageEditor image="img-b" options={{ projectId: 1 }} />);
-  rerender(<ImageEditor image="img-b" options={{ projectId: 2 }} />);
-  await flush();
-
-  expect(mockInstance.reset).not.toHaveBeenCalled();
-  expect(createEditor).toHaveBeenCalledTimes(2);
+  expect(mountOptionsOf(1).theme).toBe('dark');
+  expect(newInstance.reset).not.toHaveBeenCalled();
+  expect(newInstance.updateOptions).not.toHaveBeenCalled();
 });
 
 it('serializes overlapping image changes and collapses to the final value', async () => {
