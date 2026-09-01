@@ -3,6 +3,7 @@ import { act, render } from '@testing-library/react';
 
 import ImageEditor, {
   ImageEditorInstance,
+  ImageEditorOptions,
   ImageEditorRef,
   ImageEditorSaveResult,
   MountOptions,
@@ -109,7 +110,9 @@ it('passes every documented option through to createEditor unchanged', async () 
     features: {
       imageEditor: {
         enabled: true,
+        dock: 'left',
         tools: {
+          corners: true,
           draw: false,
           stickers: { enabled: false },
           crop: { icon: 'fa-crop-simple' },
@@ -119,15 +122,15 @@ it('passes every documented option through to createEditor unchanged', async () 
       ai: { enabled: true, assistant: true },
     },
     env: { API_V2_BASE_URL: 'https://api.example.com' },
-    theme: 'dark' as const,
-    locale: 'es' as const,
+    theme: 'dark',
+    locale: 'es',
     translations: { es: { 'editor.save': 'Guardar' } },
     offline: false,
     licenseUrl: 'https://example.com/license.json',
     defaultPrompt: 'Remove the background',
     autoSubmitPrompt: false,
-    aiAssistantOpenState: 'closed' as const,
-  };
+    aiAssistantOpenState: 'closed',
+  } satisfies ImageEditorOptions;
 
   render(<ImageEditor image="img-a" options={options} />);
   await flush();
