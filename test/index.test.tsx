@@ -35,13 +35,25 @@ const defer = <T,>(): Deferred<T> => {
 // Flush the component's serialized promise chain.
 const flush = () => act(async () => {});
 
-let mockInstance: {
+interface MockInstance {
   destroy: ReturnType<typeof vi.fn>;
   getImage: ReturnType<typeof vi.fn>;
   hasChanges: ReturnType<typeof vi.fn>;
   updateOptions: ReturnType<typeof vi.fn>;
   reset: ReturnType<typeof vi.fn>;
-};
+}
+
+// Distinct instances let a test tell "the replaced editor was skipped"
+// apart from "no editor was touched at all".
+const makeInstance = (): MockInstance => ({
+  destroy: vi.fn(),
+  getImage: vi.fn(() => null),
+  hasChanges: vi.fn(() => false),
+  updateOptions: vi.fn(),
+  reset: vi.fn(async () => {}),
+});
+
+let mockInstance: MockInstance;
 let createEditor: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
@@ -49,13 +61,7 @@ beforeEach(() => {
   vi.mocked(loadScript).mockImplementation(() => Promise.resolve());
   vi.mocked(resetLoader).mockClear();
 
-  mockInstance = {
-    destroy: vi.fn(),
-    getImage: vi.fn(() => null),
-    hasChanges: vi.fn(() => false),
-    updateOptions: vi.fn(),
-    reset: vi.fn(async () => {}),
-  };
+  mockInstance = makeInstance();
   createEditor = vi.fn(async () => mockInstance);
   window.ImageEditor = {
     createEditor,
@@ -203,6 +209,19 @@ it('destroys the editor on unmount', async () => {
   expect(mockInstance.destroy).toHaveBeenCalledTimes(1);
 });
 
+it('skips createEditor when unmounted while the embed script loads', async () => {
+  const deferred = defer<void>();
+  vi.mocked(loadScript).mockImplementationOnce(() => deferred.promise);
+
+  const { unmount } = render(<ImageEditor image="img-a" />);
+  await flush();
+  unmount();
+  deferred.resolve();
+  await flush();
+
+  expect(createEditor).not.toHaveBeenCalled();
+});
+
 it('destroys an editor that resolves after unmount', async () => {
   const deferred = defer<ImageEditorInstance>();
   createEditor.mockImplementationOnce(() => deferred.promise);
@@ -256,6 +275,36 @@ it('applies a theme change via updateOptions without remounting', async () => {
     expect.objectContaining({ theme: 'dark' })
   );
   expect(createEditor).toHaveBeenCalledTimes(1);
+});
+
+it('reports an updateOptions throw via onError without poisoning the chain', async () => {
+  const onError = vi.fn();
+  mockInstance.updateOptions.mockImplementation(() => {
+    throw new Error('theme apply failed');
+  });
+
+  const { rerender } = render(
+    <ImageEditor image="img-a" onError={onError} options={{ theme: 'light' }} />
+  );
+  await flush();
+
+  rerender(
+    <ImageEditor image="img-a" onError={onError} options={{ theme: 'dark' }} />
+  );
+  await flush();
+
+  expect(onError).toHaveBeenCalledWith(expect.any(Error));
+  expect((onError.mock.calls[0][0] as Error).message).toBe(
+    'theme apply failed'
+  );
+  expect(createEditor).toHaveBeenCalledTimes(1);
+
+  mockInstance.updateOptions.mockReset();
+  rerender(
+    <ImageEditor image="img-b" onError={onError} options={{ theme: 'dark' }} />
+  );
+  await flush();
+  expect(mockInstance.reset).toHaveBeenLastCalledWith('img-b');
 });
 
 it('remounts the editor when a non-updatable option changes', async () => {
@@ -417,6 +466,49 @@ it('falls back to console.error when onError is not provided', async () => {
 
   expect(consoleError).toHaveBeenCalled();
   consoleError.mockRestore();
+});
+
+it('skips a reset that collapses back to the applied image', async () => {
+  const { rerender } = render(<ImageEditor image="img-a" />);
+  await flush();
+
+  rerender(<ImageEditor image="img-b" />);
+  rerender(<ImageEditor image="img-a" />);
+  await flush();
+
+  expect(mockInstance.reset).not.toHaveBeenCalled();
+});
+
+it('skips a queued reset and updateOptions when a remount replaces the instance', async () => {
+  const oldInstance = makeInstance();
+  const newInstance = makeInstance();
+  createEditor
+    .mockImplementationOnce(async () => oldInstance)
+    .mockImplementationOnce(async () => newInstance);
+
+  const { rerender } = render(
+    <ImageEditor image="img-a" options={{ projectId: 1, theme: 'light' }} />
+  );
+  await flush();
+
+  // image, theme and a remount-tier option all change in one commit: the
+  // effects still see the outgoing editor, so both guards must fire.
+  rerender(
+    <ImageEditor image="img-b" options={{ projectId: 2, theme: 'dark' }} />
+  );
+  await flush();
+
+  expect(oldInstance.reset).not.toHaveBeenCalled();
+  expect(oldInstance.updateOptions).not.toHaveBeenCalled();
+  expect(oldInstance.destroy).toHaveBeenCalledTimes(1);
+
+  // The replacement mount carries the new image and theme itself, so it has
+  // nothing left to re-apply.
+  expect(createEditor).toHaveBeenCalledTimes(2);
+  expect(mountOptionsOf(1).image).toBe('img-b');
+  expect(mountOptionsOf(1).theme).toBe('dark');
+  expect(newInstance.reset).not.toHaveBeenCalled();
+  expect(newInstance.updateOptions).not.toHaveBeenCalled();
 });
 
 it('serializes overlapping image changes and collapses to the final value', async () => {
