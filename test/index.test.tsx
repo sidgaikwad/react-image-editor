@@ -188,6 +188,23 @@ it('does not remount when the tools config is deep-equal but not reference-equal
   expect(createEditor).toHaveBeenCalledTimes(1);
 });
 
+it('does not remount when the same options are written in a different key order', async () => {
+  const { rerender } = render(
+    <ImageEditor image="img-a" options={{ projectId: 1234, offline: false }} />
+  );
+  await flush();
+
+  // Same configuration, keys in the other order — the common case when
+  // options are assembled conditionally rather than as one fixed literal.
+  rerender(
+    <ImageEditor image="img-a" options={{ offline: false, projectId: 1234 }} />
+  );
+  await flush();
+
+  expect(mockInstance.destroy).not.toHaveBeenCalled();
+  expect(createEditor).toHaveBeenCalledTimes(1);
+});
+
 it('exposes the editor instance through the ref and calls onLoad', async () => {
   const ref = React.createRef<ImageEditorRef>();
   const onLoad = vi.fn();
