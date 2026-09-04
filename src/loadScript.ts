@@ -124,17 +124,19 @@ export const loadScript = (
 };
 
 /**
- * Hard-reset the embed loader. The CDN loader caches its versioned-bundle
- * promise forever — including rejections — so after a bundle-load failure
- * the only way to retry is to reload embed.js with fresh module state.
- * Rejects any still-pending load for the URL (waiters fail fast through
- * their normal error paths instead of hanging on a removed tag) and evicts
- * the cached load; the next loadScript call starts from scratch.
+ * Reset this module's loader state for a script URL. Rejects any
+ * still-pending load (waiters fail fast through their normal error paths
+ * instead of hanging on a removed tag) and evicts the cached load, so the
+ * next loadScript call starts from scratch.
  *
  * The script tag and window.ImageEditor are only torn down when we injected
  * the tag ourselves. On a page that loaded embed.js itself the embed may be
  * in active use by other consumers, and removing a working global out from
- * under them would be far worse than not retrying.
+ * under them is not ours to do.
+ *
+ * Recovery does not depend on any of this: embed.js nulls its own cached
+ * promise when a bundle load fails, so a later createEditor retries whether
+ * or not the tag was ours. This only clears the state we own.
  */
 export const resetLoader = (scriptUrl: string = defaultScriptUrl): void => {
   // Captured before abort(), which may remove the tag itself.
