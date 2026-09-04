@@ -11,7 +11,11 @@
  * serialize as strings, because `JSON.stringify` throws on both and this
  * runs during render.
  */
-const serialize = (value: unknown, seen: Set<object>): string | undefined => {
+const serialize = (
+  value: unknown,
+  seen: Set<object>,
+  honourToJSON = true
+): string | undefined => {
   if (typeof value === 'bigint') return `"${value}"`;
 
   // Covers primitives, plus the omitted-value cases (undefined, function,
@@ -19,8 +23,13 @@ const serialize = (value: unknown, seen: Set<object>): string | undefined => {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
 
   const object = value as { toJSON?: () => unknown };
-  if (typeof object.toJSON === 'function') {
-    return serialize(object.toJSON(), seen);
+  if (honourToJSON && typeof object.toJSON === 'function') {
+    // Dispatch toJSON exactly once and serialize its result directly, as
+    // JSON.stringify does. Re-dispatching would let a toJSON that returns
+    // `this` recurse until the stack overflows — during render, before the
+    // cycle guard below is ever reached. Properties *inside* the result
+    // still get their own dispatch, which is also what JSON.stringify does.
+    return serialize(object.toJSON(), seen, false);
   }
 
   if (seen.has(value)) return '"[Circular]"';
