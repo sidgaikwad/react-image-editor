@@ -61,7 +61,34 @@ it('does not treat a repeated sibling as a cycle', () => {
   );
 });
 
-it('honours toJSON, so equal Dates compare equal', () => {
-  expect(stableKey(new Date(0))).toBe(stableKey(new Date(0)));
+it('honours toJSON, matching JSON.stringify', () => {
+  expect(stableKey(new Date(0))).toBe(JSON.stringify(new Date(0)));
   expect(stableKey(new Date(0))).not.toBe(stableKey(new Date(1)));
+});
+
+it('does not recurse when toJSON returns this', () => {
+  // Dispatching toJSON on its own result would recurse forever here, and
+  // the cycle guard never runs because the toJSON branch precedes it.
+  const selfish = { a: 1, toJSON: () => selfish };
+
+  expect(() => stableKey(selfish)).not.toThrow();
+  expect(stableKey(selfish)).toBe(JSON.stringify(selfish));
+  expect(stableKey(selfish)).toBe('{"a":1}');
+});
+
+it('does not re-dispatch toJSON on its own result', () => {
+  const chained = { toJSON: () => ({ toJSON: () => 'SECOND' }) };
+
+  // JSON.stringify serialises the result's own keys rather than calling its
+  // toJSON, so the function-valued key is dropped and this collapses to {}.
+  expect(stableKey(chained)).toBe(JSON.stringify(chained));
+  expect(stableKey(chained)).toBe('{}');
+});
+
+it('still dispatches toJSON for properties inside a toJSON result', () => {
+  const inner = { toJSON: () => 'INNER' };
+  const outer = { toJSON: () => ({ nested: inner, plain: 1 }) };
+
+  expect(stableKey(outer)).toBe(JSON.stringify(outer));
+  expect(stableKey(outer)).toBe('{"nested":"INNER","plain":1}');
 });

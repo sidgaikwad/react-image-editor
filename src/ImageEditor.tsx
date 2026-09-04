@@ -2,19 +2,35 @@ import React, {
   useEffect,
   useId,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 
 import { loadScript, resetLoader } from './loadScript';
 import { stableKey } from './stableKey';
-import { ImageEditorInstance, ImageEditorProps, ImageEditorRef } from './types';
+import {
+  ImageEditorInstance,
+  ImageEditorOptions,
+  ImageEditorProps,
+  ImageEditorRef,
+} from './types';
+
+// A stable default, so omitting the `options` prop does not hand the memos
+// below a fresh object identity on every render.
+const NO_OPTIONS: ImageEditorOptions = {};
 
 function ImageEditorInner(
   props: ImageEditorProps,
   ref: React.Ref<ImageEditorRef>
 ) {
-  const { image, options = {}, scriptUrl, minHeight = 500, style = {} } = props;
+  const {
+    image,
+    options = NO_OPTIONS,
+    scriptUrl,
+    minHeight = 500,
+    style = {},
+  } = props;
 
   const [editor, setEditor] = useState<ImageEditorInstance | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -70,8 +86,20 @@ function ImageEditorInner(
   // stableKey, not JSON.stringify: the latter is key-order sensitive, so a
   // deeply equal options object written with its keys in a different order
   // would remount the editor and discard the user's unsaved work.
-  const remountKey = stableKey(remountOptions);
-  const updatableKey = stableKey([theme, locale, translations]);
+  //
+  // Memoised on the options identity: a consumer passing a stable object
+  // (or omitting the prop) serialises once rather than on every render.
+  // Everything both keys read comes from `options`, so it is the only dep.
+  const remountKey = useMemo(
+    () => stableKey(remountOptions),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [options]
+  );
+  const updatableKey = useMemo(
+    () => stableKey([theme, locale, translations]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [options]
+  );
 
   useEffect(() => {
     let cancelled = false;
