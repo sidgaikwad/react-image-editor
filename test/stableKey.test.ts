@@ -85,6 +85,44 @@ it('does not re-dispatch toJSON on its own result', () => {
   expect(stableKey(chained)).toBe('{}');
 });
 
+it('passes the property key to toJSON, as JSON.stringify does', () => {
+  const rec = { toJSON: (key: string) => `key=${JSON.stringify(key)}` };
+
+  // '' at the top level, the property name in an object, the index as a
+  // string in an array.
+  expect(stableKey(rec)).toBe(JSON.stringify(rec));
+  expect(stableKey({ a: rec, bb: rec })).toBe(
+    JSON.stringify({ a: rec, bb: rec })
+  );
+  expect(stableKey([rec, rec])).toBe(JSON.stringify([rec, rec]));
+  expect(stableKey({ outer: { inner: rec } })).toBe(
+    JSON.stringify({ outer: { inner: rec } })
+  );
+});
+
+it('does not crash a toJSON that reads its key argument', () => {
+  // Calling toJSON() with no argument handed these `undefined`, so anything
+  // touching the key threw — during render.
+  const strict = { toJSON: (key: string) => key.toUpperCase() };
+
+  expect(() => stableKey({ ab: strict })).not.toThrow();
+  expect(stableKey({ ab: strict })).toBe(JSON.stringify({ ab: strict }));
+});
+
+it('does not collapse distinct options whose toJSON reads the key', () => {
+  // Returns the slice named by the key; with an undefined key it returned
+  // undefined for everything, so both of these serialized to `{}` and a
+  // real option change looked like no change at all.
+  const slice = {
+    toJSON: (key: string) =>
+      ({ theme: 'dark', locale: 'fr' })[key as 'theme' | 'locale'],
+  };
+
+  expect(stableKey({ theme: slice })).toBe(JSON.stringify({ theme: slice }));
+  expect(stableKey({ locale: slice })).toBe(JSON.stringify({ locale: slice }));
+  expect(stableKey({ theme: slice })).not.toBe(stableKey({ locale: slice }));
+});
+
 it('still dispatches toJSON for properties inside a toJSON result', () => {
   const inner = { toJSON: () => 'INNER' };
   const outer = { toJSON: () => ({ nested: inner, plain: 1 }) };

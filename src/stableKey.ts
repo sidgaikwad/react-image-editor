@@ -14,6 +14,10 @@
 const serialize = (
   value: unknown,
   seen: Set<object>,
+  // The property name this value sits under, forwarded to toJSON exactly as
+  // JSON.stringify does: '' at the top level, the property name inside an
+  // object, the index as a string inside an array.
+  key: string,
   honourToJSON = true
 ): string | undefined => {
   if (typeof value === 'bigint') return `"${value}"`;
@@ -22,14 +26,14 @@ const serialize = (
   // symbol) where JSON.stringify itself returns undefined.
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
 
-  const object = value as { toJSON?: () => unknown };
+  const object = value as { toJSON?: (key: string) => unknown };
   if (honourToJSON && typeof object.toJSON === 'function') {
     // Dispatch toJSON exactly once and serialize its result directly, as
     // JSON.stringify does. Re-dispatching would let a toJSON that returns
     // `this` recurse until the stack overflows — during render, before the
     // cycle guard below is ever reached. Properties *inside* the result
     // still get their own dispatch, which is also what JSON.stringify does.
-    return serialize(object.toJSON(), seen, false);
+    return serialize(object.toJSON(key), seen, key, false);
   }
 
   if (seen.has(value)) return '"[Circular]"';
@@ -37,16 +41,19 @@ const serialize = (
 
   let result: string;
   if (Array.isArray(value)) {
-    result = `[${value.map((item) => serialize(item, seen) ?? 'null').join(',')}]`;
+    result = `[${value
+      .map((item, index) => serialize(item, seen, String(index)) ?? 'null')
+      .join(',')}]`;
   } else {
     const entries: string[] = [];
-    for (const key of Object.keys(value).sort()) {
+    for (const name of Object.keys(value).sort()) {
       const serialized = serialize(
-        (value as Record<string, unknown>)[key],
-        seen
+        (value as Record<string, unknown>)[name],
+        seen,
+        name
       );
       if (serialized !== undefined) {
-        entries.push(`${JSON.stringify(key)}:${serialized}`);
+        entries.push(`${JSON.stringify(name)}:${serialized}`);
       }
     }
     result = `{${entries.join(',')}}`;
@@ -60,4 +67,4 @@ const serialize = (
  * A key that is equal for deeply equal values, regardless of key order.
  */
 export const stableKey = (value: unknown): string =>
-  serialize(value, new Set()) ?? 'undefined';
+  serialize(value, new Set(), '') ?? 'undefined';
