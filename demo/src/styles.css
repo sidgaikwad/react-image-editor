@@ -201,6 +201,16 @@ body,
   right: 16px;
   bottom: 16px;
   width: 320px;
+  /*
+   * The panel is anchored to the bottom, so an image taller than the
+   * viewport grows upward and takes the header off the top of the screen —
+   * which is what happens in landscape on a phone. Bound the height and let
+   * the image absorb the difference. dvh so mobile browser chrome counts.
+   */
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
   background: var(--chrome-bg);
   color: var(--chrome-fg);
   border: 1px solid var(--chrome-border);
@@ -214,6 +224,8 @@ body,
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Close and Download stay reachable no matter how tall the image is. */
+  flex: none;
 }
 
 .preview-header h2 {
@@ -239,6 +251,11 @@ body,
   width: 100%;
   margin-top: 8px;
   border-radius: 4px;
+  /* min-height:0 lets it shrink below its intrinsic size in the column;
+     contain keeps the aspect ratio while it does. */
+  flex: 1 1 auto;
+  min-height: 0;
+  object-fit: contain;
 }
 
 /*
@@ -272,6 +289,8 @@ body,
     bottom: 8px;
     left: 8px;
     width: auto;
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
   }
 
   .topbar h1 {
