@@ -235,33 +235,72 @@ The editor includes an optional AI Assistant for chat-based edits. It requires a
 />
 ```
 
-## Offline and self-hosted assets
+## Self-hosting the editor assets
 
-By default the editor talks to Unlayer's APIs and loads its assets (fonts, frames, stickers) from the CDN. Three options change that:
-
-| Option       | Type      | Purpose                                                                                                 |
-| ------------ | --------- | ------------------------------------------------------------------------------------------------------- |
-| `offline`    | `boolean` | Skips all external API calls. AI features are unavailable; entitlements come from `licenseUrl` instead. |
-| `licenseUrl` | `string`  | URL to the encrypted `license.json` used in offline mode to load entitlements.                          |
-| `env`        | `object`  | Runtime overrides for base URLs. Takes precedence over build-time env vars.                             |
+The editor loads its stickers, frames and text-tool fonts from the CDN, resolving each one against a base URL. Point that at your own copy with `env.IMAGE_EDITOR_BASE_URL`, and pin the embed script with `scriptUrl`:
 
 ```jsx
 <ImageEditor
   image={url}
+  scriptUrl="/vendor/image-editor/embed.js"
   options={{
-    offline: true,
-    licenseUrl: '/assets/license.json',
     env: {
-      // Point the editor at assets bundled inside your own app.
-      IMAGE_EDITOR_BASE_URL: '/assets/image-editor/',
+      // Assets are fetched from `${IMAGE_EDITOR_BASE_URL}/assets/<path>`.
+      IMAGE_EDITOR_BASE_URL: '/vendor/image-editor',
       API_V2_BASE_URL: 'https://api.example.com/v2',
-      API_V3_BASE_URL: 'https://api.example.com/v3',
+      API_V3_BASE_URL: 'https://api.example.com/builder/v3',
     },
   }}
 />
 ```
 
+Copy the `assets/` directory from `https://cdn.unlayer.com/image-editor/<version>/` to that location. This keeps asset traffic on your own infrastructure while the editor still resolves assets **by URL** — it is not the same thing as offline mode, and the two are configured differently.
+
 `env` is a remount-tier option — set it before mounting rather than toggling it live.
+
+## Offline mode
+
+`offline: true` skips all external API calls. Entitlements come from `licenseUrl` instead of the API, and AI features are unavailable.
+
+> **`offline` also turns off URL-based asset loading.** Setting it together with `IMAGE_EDITOR_BASE_URL` does not give you self-hosted assets — the base URL is ignored for assets, every sticker and frame resolves to an empty string, and the text tool's fonts fall back. Offline mode needs an explicit asset map instead.
+
+A working offline setup has three parts:
+
+**1. Serve the scripts yourself.** Offline means no CDN, so host `embed.js` and the versioned bundle locally and point `scriptUrl` at your copy.
+
+**2. Provide an asset map.** The bundle exposes `setAssetsMap`, which takes an object keyed by the asset paths the editor asks for (`images/stickers/…`, `images/frames/…`, `fonts/…`) and valued with anything the browser can load — a local URL or a `data:` URI. It must be set before the editor renders the panels that use those assets; the embed fires `image-editor-ready` once the bundle has registered:
+
+```jsx
+window.addEventListener(
+  'image-editor-ready',
+  () => {
+    window.__ImageEditorImpl__.setAssetsMap({
+      'images/stickers/beach/0.svg':
+        '/vendor/image-editor/assets/images/stickers/beach/0.svg',
+      'images/frames/art1/bottom.png':
+        '/vendor/image-editor/assets/images/frames/art1/bottom.png',
+      'fonts/TrashHand.ttf': '/vendor/image-editor/assets/fonts/TrashHand.ttf',
+      // …one entry per asset you want available offline
+    });
+  },
+  { once: true }
+);
+```
+
+Any path missing from the map resolves to an empty string, so build the map from the contents of the `assets/` directory rather than by hand — generating it at build time from a directory listing is the practical approach.
+
+**3. Expect system UI fonts.** Online, the editor injects a Google Fonts stylesheet for Inter and Open Sans. Offline that injection is skipped and the interface falls back to system fonts. Self-host those two families yourself if the fallback matters.
+
+```jsx
+<ImageEditor
+  image={url}
+  scriptUrl="/vendor/image-editor/embed.js"
+  options={{
+    offline: true,
+    licenseUrl: '/vendor/image-editor/license.json',
+  }}
+/>
+```
 
 ## Localization
 
