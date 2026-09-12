@@ -91,7 +91,11 @@ const dataUrl = editorRef.current?.editor?.getImage();
 Two distinct channels:
 
 - **`onLoadError`** — the editor loaded fine, but the _image_ couldn't be loaded into the canvas (CORS, dead URL, decode error).
-- **`onError`** — the wrapper couldn't reach a working editor: the embed script failed to load, editor creation was rejected, or re-applying a changed `image` failed. A later remount retries from scratch after a CDN failure. The wrapper also clears its own loader state, but only tears down a script tag it injected itself — an embed the host page loaded is left intact for its other consumers.
+- **`onError`** — the wrapper couldn't reach a working editor: the embed script failed to load, editor creation was rejected, or re-applying a changed `image` failed. A later remount retries from scratch.
+
+  That retry relies on the current Unlayer CDN loader, which clears its own cached bundle promise when a load fails. A pinned older build, or a custom loader supplied through `scriptUrl`, has not been verified to do the same — if it caches a rejection, remounting may keep failing until the page reloads.
+
+  The wrapper also clears the loader state it owns. It removes a `<script>` tag only if it injected that tag itself, so an embed the host page loaded stays intact for its other consumers. One exception: a tag that has _provably_ failed — it fired an `error` event, or a reused host tag stayed unready past the 30-second wait — is removed either way, because a dead tag is no use to the host and leaving it in place would make every retry reuse it.
 
 ## Tools
 
