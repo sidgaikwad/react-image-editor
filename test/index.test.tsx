@@ -214,23 +214,6 @@ it('does not remount when the same options are written in a different key order'
   expect(createEditor).toHaveBeenCalledTimes(1);
 });
 
-it('does not re-serialize options when the object identity is stable', async () => {
-  const options: ImageEditorOptions = { projectId: 1234, offline: false };
-  const { rerender } = render(<ImageEditor image="img-a" options={options} />);
-  await flush();
-
-  const afterMount = vi.mocked(stableKey).mock.calls.length;
-  expect(afterMount).toBeGreaterThan(0);
-
-  // Same object, three more renders: the memos should absorb all of them.
-  rerender(<ImageEditor image="img-a" options={options} />);
-  rerender(<ImageEditor image="img-b" options={options} />);
-  rerender(<ImageEditor image="img-c" options={options} />);
-  await flush();
-
-  expect(vi.mocked(stableKey).mock.calls.length).toBe(afterMount);
-});
-
 it('re-serializes when a fresh options object arrives', async () => {
   const { rerender } = render(
     <ImageEditor image="img-a" options={{ projectId: 1234 }} />
@@ -245,17 +228,39 @@ it('re-serializes when a fresh options object arrives', async () => {
   expect(createEditor).toHaveBeenCalledTimes(1);
 });
 
-it('does not serialize a fresh empty default on every render', async () => {
-  const { rerender } = render(<ImageEditor image="img-a" />);
+it('detects an in-place mutation of a long-lived options object', async () => {
+  // A consumer holding one config object and mutating it is supported by the
+  // released version, which re-serialised on every render. Memoising the key
+  // on the options identity would silently miss this and leave the editor
+  // configured with the old projectId.
+  const options: ImageEditorOptions = { projectId: 1 };
+  const { rerender } = render(<ImageEditor image="img-a" options={options} />);
   await flush();
-  const afterMount = vi.mocked(stableKey).mock.calls.length;
 
-  rerender(<ImageEditor image="img-b" />);
-  rerender(<ImageEditor image="img-c" />);
+  expect(createEditor).toHaveBeenCalledTimes(1);
+
+  options.projectId = 2;
+  rerender(<ImageEditor image="img-a" options={options} />);
   await flush();
 
-  // Omitting `options` used to hand the memo a new {} each render.
-  expect(vi.mocked(stableKey).mock.calls.length).toBe(afterMount);
+  expect(mockInstance.destroy).toHaveBeenCalledTimes(1);
+  expect(createEditor).toHaveBeenCalledTimes(2);
+  expect(mountOptionsOf(1).projectId).toBe(2);
+});
+
+it('detects an in-place theme mutation without remounting', async () => {
+  const options: ImageEditorOptions = { theme: 'light' };
+  const { rerender } = render(<ImageEditor image="img-a" options={options} />);
+  await flush();
+
+  options.theme = 'dark';
+  rerender(<ImageEditor image="img-a" options={options} />);
+  await flush();
+
+  expect(mockInstance.updateOptions).toHaveBeenCalledWith(
+    expect.objectContaining({ theme: 'dark' })
+  );
+  expect(createEditor).toHaveBeenCalledTimes(1);
 });
 
 it('exposes the editor instance through the ref and calls onLoad', async () => {

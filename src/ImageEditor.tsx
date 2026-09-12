@@ -2,23 +2,13 @@ import React, {
   useEffect,
   useId,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
 } from 'react';
 
 import { loadScript, resetLoader } from './loadScript';
 import { stableKey } from './stableKey';
-import {
-  ImageEditorInstance,
-  ImageEditorOptions,
-  ImageEditorProps,
-  ImageEditorRef,
-} from './types';
-
-// A stable default, so omitting the `options` prop does not hand the memos
-// below a fresh object identity on every render.
-const NO_OPTIONS: ImageEditorOptions = {};
+import { ImageEditorInstance, ImageEditorProps, ImageEditorRef } from './types';
 
 function ImageEditorInner(
   props: ImageEditorProps,
@@ -26,7 +16,7 @@ function ImageEditorInner(
 ) {
   const {
     image,
-    options = NO_OPTIONS,
+    options = {},
     scriptUrl,
     minHeight = 500,
     style = {},
@@ -89,19 +79,14 @@ function ImageEditorInner(
   // deeply equal options object written with its keys in a different order
   // would remount the editor and discard the user's unsaved work.
   //
-  // Memoised on the options identity: a consumer passing a stable object
-  // (or omitting the prop) serialises once rather than on every render.
-  // Everything both keys read comes from `options`, so it is the only dep.
-  const remountKey = useMemo(
-    () => stableKey(remountOptions),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [options]
-  );
-  const updatableKey = useMemo(
-    () => stableKey([theme, locale, translations]),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [options]
-  );
+  // Deliberately recomputed every render, NOT memoised on the options
+  // identity. Callers are free to mutate one long-lived options object in
+  // place, and a memo keyed on that object would never see it change,
+  // leaving projectId/theme/feature settings silently stale. Serializing a
+  // small options object is far cheaper than the remount a missed change
+  // costs, and it is what the released JSON.stringify did.
+  const remountKey = stableKey(remountOptions);
+  const updatableKey = stableKey([theme, locale, translations]);
 
   useEffect(() => {
     let cancelled = false;
