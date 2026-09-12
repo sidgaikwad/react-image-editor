@@ -130,3 +130,44 @@ it('still dispatches toJSON for properties inside a toJSON result', () => {
   expect(stableKey(outer)).toBe(JSON.stringify(outer));
   expect(stableKey(outer)).toBe('{"nested":"INNER","plain":1}');
 });
+
+it('matches JSON.stringify for sparse arrays', () => {
+  // .map() skips holes, so a sparse array joined to fewer entries than its
+  // length: new Array(1) serialized as '[]' and collided with [].
+  expect(stableKey(new Array(1))).toBe(JSON.stringify(new Array(1)));
+  expect(stableKey(new Array(3))).toBe(JSON.stringify(new Array(3)));
+  expect(stableKey(new Array(1))).not.toBe(stableKey([]));
+
+  const trailing = [1];
+  trailing[3] = 4;
+  expect(stableKey(trailing)).toBe(JSON.stringify(trailing));
+});
+
+it('reads a toJSON getter exactly once', () => {
+  // The property used to be read twice — once to type-check it, once to call
+  // it — so a getter ran twice.
+  let reads = 0;
+  const value = {
+    get toJSON() {
+      reads++;
+      return () => 'ok';
+    },
+  };
+
+  expect(stableKey(value)).toBe('"ok"');
+  expect(reads).toBe(1);
+});
+
+it('invokes toJSON with `this` bound to the value', () => {
+  // Caching the method off the object loses the binding that method-call
+  // syntax gave for free, so it has to be re-applied with .call.
+  const value = {
+    marker: 'mine',
+    toJSON() {
+      return this.marker;
+    },
+  };
+
+  expect(stableKey(value)).toBe(JSON.stringify(value));
+  expect(stableKey(value)).toBe('"mine"');
+});
