@@ -193,24 +193,18 @@ it('resetLoader removes the global, the tag, and the cached promise', async () =
   await retry;
 });
 
-it('prefetches the bundle when the host page already installed the global', async () => {
-  // Without this the first createEditor on a host-injected page pays a full
-  // extra round trip that the injected path avoids.
+it('does not prefetch the bundle when the host page installed the global', async () => {
+  // load() with no arguments resolves "latest" and the embed caches that
+  // promise, so prefetching here would override a version the embed's own
+  // createEditor pins. createEditor is awaited straight after this resolves
+  // and starts the request anyway.
   const embed = mockEmbed();
   window.ImageEditor = embed;
 
   await loadScript();
 
-  expect(embed.load).toHaveBeenCalledTimes(1);
+  expect(embed.load).not.toHaveBeenCalled();
   expect(scriptTags()).toHaveLength(0);
-});
-
-it('swallows a prefetch failure on the already-installed path', async () => {
-  const embed = mockEmbed();
-  vi.mocked(embed.load).mockRejectedValueOnce(new Error('bundle 404'));
-  window.ImageEditor = embed;
-
-  await expect(loadScript()).resolves.toBeUndefined();
 });
 
 it('accepts a custom reused-tag timeout', async () => {

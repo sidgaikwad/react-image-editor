@@ -39,11 +39,11 @@ export const loadScript = (
   // embed.js evaluates, so its presence means the script already ran
   // (whether we injected it or the host page did).
   if (window.ImageEditor) {
-    // Prefetch the versioned bundle, exactly as the load listener below
-    // does. Without this a page that injected embed.js itself pays a full
-    // extra round trip on the first createEditor. The embed loader caches
-    // its own promise, so a duplicate call is a no-op.
-    window.ImageEditor.load().catch(() => {});
+    // Deliberately no load() prefetch here. createEditor is awaited
+    // immediately after this resolves and starts the bundle request itself,
+    // so a prefetch would buy a microtask, not a round trip — and calling
+    // load() with no arguments resolves "latest" and caches that promise,
+    // which would defeat any version the embed's own createEditor pins.
     return Promise.resolve();
   }
 
