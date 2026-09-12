@@ -11,9 +11,15 @@ permissions:
   contents: read
 
 # Superseded runs on a PR are pointless — the 6-job matrix keeps runners busy
-# for a result nobody will look at. Pushes to main still run to completion.
+# for a result nobody will look at.
+#
+# PRs share a group keyed on the ref, so a new push supersedes the run it
+# replaces. Every other event — notably a push to main — gets a group of its
+# own keyed on run_id, because only one run per group may sit pending: with a
+# shared group, a third push would discard the second one's queued run even
+# though cancel-in-progress is off for pushes.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
